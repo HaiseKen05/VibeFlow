@@ -58,22 +58,22 @@ Since this application is built as a single-page client-side web application, no
 
 1. Clone or download this repository:
    ```bash
-   git clone https://github.com/your-username/mcu-workflow-generator.git
+   git clone https://github.com/your-username/VibeFlow.git
    ```
 2. Navigate to the project directory:
    ```bash
-   cd mcu-workflow-generator
+   cd VibeFlow
    ```
-3. Open `index.html` directly in any web browser:
+3. Open `VibeFlow.html` directly in any web browser:
    ```bash
    # On macOS
-   open index.html
+   open VibeFlow.html
 
    # On Linux
-   xdg-open index.html
+   xdg-open VibeFlow.html
 
    # On Windows
-   start index.html
+   start VibeFlow.html
    ```
 
 ---
@@ -82,7 +82,7 @@ Since this application is built as a single-page client-side web application, no
 
 ```
 .
-├── index.html        # Main HTML layout, styles, and inline application script
+├── VibeFlow.html        # Main HTML layout, styles, and inline application script
 └── README.md         # Project documentation
 ```
 
@@ -105,7 +105,7 @@ Since this application is built as a single-page client-side web application, no
 
 ### Default Preset Workflow
 
-To modify the default steps that populate on load or reset, update the `INITIAL_PRESET_STEPS` constant inside `index.html`:
+To modify the default steps that populate on load or reset, update the `INITIAL_PRESET_STEPS` constant inside `VibeFlow.html`:
 
 ```javascript
 const DEFAULT_MCU_PLACEHOLDER = "Arduino Uno";
