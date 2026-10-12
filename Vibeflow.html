@@ -14,7 +14,6 @@
         .code-font {
             font-family: 'Fira Code', monospace;
         }
-        /* Custom scrollbar styling for code output */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -29,6 +28,38 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #475569;
+        }
+        #output-preview {
+            transition: all 0.15s ease;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .sync-highlight {
+            animation: syncPulse 0.6s ease-out;
+        }
+        @keyframes syncPulse {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+            70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        /* Pin badge styling */
+        .pin-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .pin-badge.vcc {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .pin-badge.gnd {
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+            border: 1px solid rgba(100, 116, 139, 0.3);
         }
     </style>
 </head>
@@ -64,6 +95,8 @@
                     <label for="mcu-input" class="block text-sm font-semibold text-slate-300 tracking-wide uppercase flex items-center space-x-2">
                         <i class="fa-solid fa-cpu text-indigo-400"></i>
                         <span>MCU</span>
+                        <span class="ml-auto text-[10px] font-normal normal-case text-indigo-400/80 flex items-center space-x-1">
+                        </span>
                     </label>
                     <div class="relative rounded-xl shadow-sm">
                         <input 
@@ -71,7 +104,7 @@
                             id="mcu-input" 
                             placeholder="Arduino Uno"
                             class="w-full bg-slate-950/70 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 placeholder:italic transition-all text-sm outline-none"
-                            oninput="updateOutput()"
+                            oninput="handleMcuInput(this.value)"
                         >
                     </div>
                 </div>
@@ -88,10 +121,9 @@
 
                     <!-- Dynamic Components List -->
                     <div id="components-container" class="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-                        <!-- Component items with nested pin inputs rendered dynamically via JS -->
                     </div>
 
-                    <!-- Add Component Button { + } -->
+                    <!-- Add Component Button -->
                     <button 
                         type="button" 
                         onclick="addComponent()" 
@@ -114,12 +146,9 @@
                         <span class="text-xs text-slate-400" id="step-count">0 steps</span>
                     </div>
 
-                    <!-- Dynamic Input List -->
                     <div id="workflow-container" class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                        <!-- Workflow items rendered dynamically via JS -->
                     </div>
 
-                    <!-- Add Step Button { + } -->
                     <button 
                         type="button" 
                         onclick="addWorkflowStep()" 
@@ -149,7 +178,7 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons: Copy & Reset -->
+                <!-- Action Buttons -->
                 <div class="pt-4 border-t border-slate-700/60 grid grid-cols-2 gap-4">
                     <button 
                         type="button" 
@@ -172,6 +201,7 @@
 
             </section>
 
+            <!-- Right Side: Output Preview with Style Menu -->
             <section class="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-full min-h-[420px] sticky top-24">
                 <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
                     <div class="flex items-center space-x-2">
@@ -190,8 +220,55 @@
                     </button>
                 </div>
 
+                <div class="bg-slate-900/80 border-b border-slate-800 px-3 py-2 flex flex-wrap items-center gap-1.5 text-xs">
+                    <div class="flex items-center space-x-1 bg-slate-800 rounded-lg px-2 py-1">
+                        <i class="fa-solid fa-font text-slate-400 text-[10px]"></i>
+                        <select id="font-family-select" onchange="applyOutputStyles()" class="bg-transparent text-slate-200 text-xs outline-none cursor-pointer max-w-[90px]">
+                            <option value="'Fira Code', monospace" selected>Fira Code</option>
+                            <option value="'Inter', sans-serif">Inter</option>
+                            <option value="Arial, sans-serif">Arial</option>
+                            <option value="'Courier New', monospace">Courier New</option>
+                            <option value="Georgia, serif">Georgia</option>
+                            <option value="Verdana, sans-serif">Verdana</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center space-x-1 bg-slate-800 rounded-lg px-2 py-1">
+                        <i class="fa-solid fa-text-height text-slate-400 text-[10px]"></i>
+                        <input type="number" id="font-size-input" min="8" max="36" value="14" onchange="applyOutputStyles()" oninput="applyOutputStyles()" class="bg-transparent text-slate-200 text-xs w-10 outline-none text-center">
+                        <span class="text-slate-500 text-[10px]">px</span>
+                    </div>
+
+                    <div class="flex items-center space-x-1 bg-slate-800 rounded-lg px-2 py-1" title="Text Color">
+                        <i class="fa-solid fa-palette text-slate-400 text-[10px]"></i>
+                        <input type="color" id="text-color-input" value="#a5b4fc" onchange="applyOutputStyles()" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0">
+                    </div>
+
+                    <div class="flex items-center space-x-1 bg-slate-800 rounded-lg px-2 py-1" title="Background Color">
+                        <i class="fa-solid fa-fill-drip text-slate-400 text-[10px]"></i>
+                        <input type="color" id="bg-color-input" value="#020617" onchange="applyOutputStyles()" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0">
+                    </div>
+
+                    <div class="flex items-center space-x-0.5 bg-slate-800 rounded-lg p-0.5">
+                        <button id="bold-btn" onclick="toggleBold()" class="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors focus:outline-none" title="Bold">
+                            <i class="fa-solid fa-bold text-xs"></i>
+                        </button>
+                        <button id="italic-btn" onclick="toggleItalic()" class="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors focus:outline-none" title="Italic">
+                            <i class="fa-solid fa-italic text-xs"></i>
+                        </button>
+                        <button id="underline-btn" onclick="toggleUnderline()" class="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors focus:outline-none" title="Underline">
+                            <i class="fa-solid fa-underline text-xs"></i>
+                        </button>
+                    </div>
+
+                    <button onclick="resetOutputStyles()" class="p-1.5 rounded-md text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors focus:outline-none ml-auto" title="Reset styles">
+                        <i class="fa-solid fa-rotate-right text-xs"></i>
+                    </button>
+                </div>
+
                 <div class="p-5 flex-grow font-mono text-sm leading-relaxed overflow-x-auto relative min-h-[300px]">
-                    <pre id="output-preview" class="text-indigo-300 selection:bg-indigo-500 selection:text-white whitespace-pre-wrap code-font"></pre>
+                    <pre id="output-preview" class="whitespace-pre-wrap code-font"></pre>
                 </div>
 
                 <div class="px-4 py-2.5 bg-slate-900/60 border-t border-slate-800/80 text-xs text-slate-500 flex justify-between items-center">
@@ -221,18 +298,24 @@
     </div>
 
     <script>
-        // Initial Default Presets
         const DEFAULT_MCU_PLACEHOLDER = "Arduino Uno";
         const DEFAULT_NOTES_PLACEHOLDER = "None";
+
+        /**
+         * Creates the default pin array with VCC and GND as static (non-editable) pins
+         */
+        function createDefaultPins() {
+            return [
+                { label: "VCC", protected: true, pinType: "vcc" },
+                { label: "GND", protected: true, pinType: "gnd" }
+            ];
+        }
 
         const INITIAL_PRESET_COMPONENTS = [
             {
                 name: "",
                 placeholderName: "New Component",
-                pins: [
-                    { value: "", placeholder: "VCC" },
-                    { value: "", placeholder: "GND" }
-                ]
+                pins: createDefaultPins()
             }
         ];
 
@@ -244,11 +327,14 @@
             { value: "", placeholder: "Wait 1 second" }
         ];
 
-        // UI State
         let componentList = [];
         let workflowSteps = [];
 
-        // DOM Element Cache
+        let isBold = false;
+        let isItalic = false;
+        let isUnderline = false;
+        let isSyncing = false;
+
         const mcuInput = document.getElementById('mcu-input');
         const notesInput = document.getElementById('notes-input');
         const componentsContainer = document.getElementById('components-container');
@@ -259,19 +345,24 @@
         const charCountEl = document.getElementById('char-count');
         const toast = document.getElementById('toast');
 
+        const fontFamilySelect = document.getElementById('font-family-select');
+        const fontSizeInput = document.getElementById('font-size-input');
+        const textColorInput = document.getElementById('text-color-input');
+        const bgColorInput = document.getElementById('bg-color-input');
+        const boldBtn = document.getElementById('bold-btn');
+        const italicBtn = document.getElementById('italic-btn');
+        const underlineBtn = document.getElementById('underline-btn');
+
         window.addEventListener('DOMContentLoaded', () => {
             initDefaults();
+            applyOutputStyles();
         });
 
-        /**
-         * Initializes or resets form state to defaults
-         */
         function initDefaults() {
             mcuInput.value = "";
             mcuInput.placeholder = DEFAULT_MCU_PLACEHOLDER;
             notesInput.value = "";
             
-            // Deep copy presets
             componentList = INITIAL_PRESET_COMPONENTS.map(comp => ({
                 name: comp.name,
                 placeholderName: comp.placeholderName,
@@ -285,9 +376,33 @@
             updateOutput();
         }
 
+        function handleMcuInput(value) {
+            if (isSyncing) return;
+            isSyncing = true;
+
+            if (componentList.length > 0) {
+                componentList[0].name = value;
+
+                const firstCompNameInput = componentsContainer.querySelector(
+                    `input[oninput*="handleComponentNameChange(0,"]`
+                );
+                if (firstCompNameInput) {
+                    firstCompNameInput.value = value;
+
+                    const compCard = firstCompNameInput.closest('.bg-slate-900\\/90');
+                    if (compCard) {
+                        compCard.classList.add('sync-highlight');
+                        setTimeout(() => compCard.classList.remove('sync-highlight'), 600);
+                    }
+                }
+            }
+
+            updateOutput();
+            isSyncing = false;
+        }
+
         /**
-         * STREAMING_CHUNK:Rendering component cards with nested pin fields...
-         * Renders components with their respective sub-pins
+         * Renders components with static VCC/GND rows and editable custom pins
          */
         function renderComponentInputs() {
             componentsContainer.innerHTML = '';
@@ -296,32 +411,60 @@
                 const compCard = document.createElement('div');
                 compCard.className = 'bg-slate-900/90 border border-slate-700/70 rounded-xl p-4 space-y-3 relative group';
 
-                // Render Pin rows for this component
                 let pinsHtml = '';
+                let displayIndex = 1;
+
                 compObj.pins.forEach((pinObj, pinIndex) => {
-                    pinsHtml += `
-                        <div class="flex items-center space-x-2">
-                            <div class="text-slate-500 text-[11px] font-mono w-4 text-right select-none">${pinIndex + 1}.</div>
-                            <div class="flex-grow">
-                                <input 
-                                    type="text" 
-                                    value="${escapeHtml(pinObj.value)}" 
-                                    placeholder="${escapeHtml(pinObj.placeholder)}" 
-                                    oninput="handlePinChange(${compIndex}, ${pinIndex}, this.value)"
-                                    class="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-lg px-3 py-1.5 text-slate-200 placeholder:text-slate-600 placeholder:italic text-xs transition-all outline-none"
-                                >
+                    const isProtected = pinObj.protected === true;
+
+                    if (isProtected) {
+                        // Static labeled row — no input, no remove button
+                        pinsHtml += `
+                            <div class="flex items-center space-x-2 bg-slate-950/50 rounded-lg px-2 py-1.5 border border-slate-800/60">
+                                <div class="text-slate-500 text-[11px] font-mono w-4 text-right select-none">${displayIndex}.</div>
+                                <div class="flex-grow flex items-center space-x-2">
+                                    <span class="pin-badge ${pinObj.pinType}">${pinObj.label}</span>
+                                </div>
+                                <div class="p-1.5 text-slate-600" title="Required pin">
+                                    <i class="fa-solid fa-lock text-[10px]"></i>
+                                </div>
                             </div>
-                            <button 
-                                type="button" 
-                                onclick="removePin(${compIndex}, ${pinIndex})" 
-                                title="Remove Pin"
-                                class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all focus:outline-none"
-                            >
-                                <i class="fa-regular fa-trash-can text-xs"></i>
-                            </button>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        // Custom editable pin
+                        pinsHtml += `
+                            <div class="flex items-center space-x-2">
+                                <div class="text-slate-500 text-[11px] font-mono w-4 text-right select-none">${displayIndex}.</div>
+                                <div class="flex-grow">
+                                    <input 
+                                        type="text" 
+                                        value="${escapeHtml(pinObj.value || '')}" 
+                                        placeholder="${escapeHtml(pinObj.placeholder || 'Pin detail')}" 
+                                        oninput="handlePinChange(${compIndex}, ${pinIndex}, this.value)"
+                                        class="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-lg px-3 py-1.5 text-slate-200 placeholder:text-slate-600 placeholder:italic text-xs transition-all outline-none"
+                                    >
+                                </div>
+                                <button 
+                                    type="button" 
+                                    onclick="removePin(${compIndex}, ${pinIndex})" 
+                                    title="Remove Pin"
+                                    class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all focus:outline-none"
+                                >
+                                    <i class="fa-regular fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
+                    displayIndex++;
                 });
+
+                const syncBadge = compIndex === 0 
+                    ? `<span class="ml-2 text-[9px] font-normal normal-case text-indigo-400/70 bg-indigo-500/10 px-1.5 py-0.5 rounded flex items-center space-x-1">
+                           
+                       </span>` 
+                    : '';
+
+                const customPinCount = compObj.pins.filter(p => !p.protected).length;
 
                 compCard.innerHTML = `
                     <div class="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -334,6 +477,7 @@
                                 oninput="handleComponentNameChange(${compIndex}, this.value)"
                                 class="w-full bg-slate-950/90 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-lg px-3 py-1.5 text-slate-100 placeholder:text-slate-500 placeholder:italic text-xs font-medium outline-none"
                             >
+                            ${syncBadge}
                         </div>
                         <button 
                             type="button" 
@@ -345,14 +489,16 @@
                         </button>
                     </div>
 
-                    <!-- Pins Subsection -->
                     <div class="space-y-2 pt-1 pl-1">
                         <div class="flex justify-between items-center text-xs text-slate-400 font-medium">
                             <span class="flex items-center space-x-1.5 text-[11px] uppercase tracking-wider text-slate-400">
                                 <i class="fa-solid fa-microchip text-[10px] text-indigo-400"></i>
                                 <span>Pins Available</span>
                             </span>
-                            <span class="text-[10px] text-slate-500">${compObj.pins.length} pin${compObj.pins.length === 1 ? '' : 's'}</span>
+                            <span class="text-[10px] text-slate-500">
+                                ${compObj.pins.length} pin${compObj.pins.length === 1 ? '' : 's'}
+                                ${customPinCount > 0 ? `<span class="text-slate-600">(${customPinCount} custom)</span>` : ''}
+                            </span>
                         </div>
 
                         <div class="space-y-2">
@@ -365,7 +511,7 @@
                             class="mt-2 w-full py-1.5 border border-dashed border-slate-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 rounded-lg text-indigo-400 text-xs transition-all font-medium flex items-center justify-center space-x-1.5"
                         >
                             <i class="fa-solid fa-plus text-[10px]"></i>
-                            <span>Add Pin</span>
+                            <span>Add Custom Pin</span>
                         </button>
                     </div>
                 `;
@@ -376,11 +522,15 @@
             componentCountEl.textContent = `${componentList.length} component${componentList.length === 1 ? '' : 's'}`;
         }
 
-        /**
-         * Component state handlers
-         */
         function handleComponentNameChange(compIndex, value) {
             componentList[compIndex].name = value;
+
+            if (compIndex === 0 && !isSyncing) {
+                isSyncing = true;
+                mcuInput.value = value;
+                isSyncing = false;
+            }
+
             updateOutput();
         }
 
@@ -393,13 +543,17 @@
             componentList.push({
                 name: "",
                 placeholderName: "New Component",
-                pins: [
-                    { value: "", placeholder: "VCC" },
-                    { value: "", placeholder: "GND" }
-                ]
+                pins: createDefaultPins()
             });
             renderComponentInputs();
             updateOutput();
+
+            setTimeout(() => {
+                const cards = componentsContainer.querySelectorAll('.bg-slate-900\\/90');
+                if (cards.length > 0) {
+                    cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }, 50);
         }
 
         function removeComponent(compIndex) {
@@ -411,21 +565,23 @@
         function addPin(compIndex) {
             componentList[compIndex].pins.push({
                 value: "",
-                placeholder: "Pin detail (e.g., GPIO / Pin / Power)"
+                placeholder: "Pin detail (e.g., GPIO / Pin / Power)",
+                protected: false,
+                pinType: "custom"
             });
             renderComponentInputs();
             updateOutput();
         }
 
         function removePin(compIndex, pinIndex) {
+            const pin = componentList[compIndex].pins[pinIndex];
+            if (pin.protected) return;
+
             componentList[compIndex].pins.splice(pinIndex, 1);
             renderComponentInputs();
             updateOutput();
         }
 
-        /**
-         * STREAMING_CHUNK:Handling workflow rendering and change logic...
-         */
         function renderWorkflowInputs() {
             workflowContainer.innerHTML = '';
             
@@ -485,10 +641,6 @@
             updateOutput();
         }
 
-        /**
-         * STREAMING_CHUNK:Formatting text output generator logic...
-         * Generates output string containing MCU, Components with Pins in [Pin] format, WorkFlow, and Notes
-         */
         function generateFormattedText() {
             const mcuVal = mcuInput.value.trim() || mcuInput.placeholder.trim();
             const notesVal = notesInput.value.trim() || DEFAULT_NOTES_PLACEHOLDER;
@@ -500,8 +652,13 @@
                 text += `\n- ${compName}`;
                 
                 compObj.pins.forEach((pinObj) => {
-                    const pinVal = pinObj.value.trim() || pinObj.placeholder.trim();
-                    text += `\n  [${pinVal}]`;
+                    if (pinObj.protected) {
+                        // Use the fixed label (VCC / GND)
+                        text += `\n  [${pinObj.label}]`;
+                    } else {
+                        const pinVal = (pinObj.value || '').trim() || pinObj.placeholder.trim();
+                        text += `\n  [${pinVal}]`;
+                    }
                 });
             });
 
@@ -520,18 +677,63 @@
             return text;
         }
 
-        /**
-         * Updates real-time output preview
-         */
         function updateOutput() {
             const formatted = generateFormattedText();
             outputPreview.textContent = formatted;
             charCountEl.textContent = `${formatted.length} chars`;
         }
 
-        /**
-         * Copy formatted text directly to clipboard
-         */
+        function applyOutputStyles() {
+            if (!outputPreview) return;
+
+            outputPreview.style.fontFamily = fontFamilySelect.value;
+            const size = parseInt(fontSizeInput.value, 10) || 14;
+            outputPreview.style.fontSize = size + 'px';
+            outputPreview.style.color = textColorInput.value;
+            outputPreview.style.backgroundColor = bgColorInput.value;
+            outputPreview.style.fontWeight = isBold ? 'bold' : 'normal';
+            outputPreview.style.fontStyle = isItalic ? 'italic' : 'normal';
+            outputPreview.style.textDecoration = isUnderline ? 'underline' : 'none';
+
+            boldBtn.classList.toggle('bg-indigo-600', isBold);
+            boldBtn.classList.toggle('text-white', isBold);
+            boldBtn.classList.toggle('text-slate-400', !isBold);
+
+            italicBtn.classList.toggle('bg-indigo-600', isItalic);
+            italicBtn.classList.toggle('text-white', isItalic);
+            italicBtn.classList.toggle('text-slate-400', !isItalic);
+
+            underlineBtn.classList.toggle('bg-indigo-600', isUnderline);
+            underlineBtn.classList.toggle('text-white', isUnderline);
+            underlineBtn.classList.toggle('text-slate-400', !isUnderline);
+        }
+
+        function toggleBold() {
+            isBold = !isBold;
+            applyOutputStyles();
+        }
+
+        function toggleItalic() {
+            isItalic = !isItalic;
+            applyOutputStyles();
+        }
+
+        function toggleUnderline() {
+            isUnderline = !isUnderline;
+            applyOutputStyles();
+        }
+
+        function resetOutputStyles() {
+            fontFamilySelect.value = "'Fira Code', monospace";
+            fontSizeInput.value = 14;
+            textColorInput.value = "#a5b4fc";
+            bgColorInput.value = "#020617";
+            isBold = false;
+            isItalic = false;
+            isUnderline = false;
+            applyOutputStyles();
+        }
+
         function copyToClipboard() {
             const formattedText = generateFormattedText();
 
@@ -580,11 +782,13 @@
         }
 
         function escapeHtml(str) {
-            return str.replace(/&/g, "&amp;")
-                      .replace(/</g, "&lt;")
-                      .replace(/>/g, "&gt;")
-                      .replace(/"/g, "&quot;")
-                      .replace(/'/g, "&#039;");
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     </script>
 </body>
