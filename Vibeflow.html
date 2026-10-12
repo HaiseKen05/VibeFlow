@@ -76,7 +76,35 @@
                     </div>
                 </div>
 
-                <!-- Section 2: WorkFlow List -->
+                <!-- Section 2: Components List with Pin Subsections -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-sm font-semibold text-slate-300 tracking-wide uppercase flex items-center space-x-2">
+                            <i class="fa-solid fa-plug text-indigo-400"></i>
+                            <span>Components & Pins</span>
+                        </label>
+                        <span class="text-xs text-slate-400" id="component-count">0 items</span>
+                    </div>
+
+                    <!-- Dynamic Components List -->
+                    <div id="components-container" class="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+                        <!-- Component items with nested pin inputs rendered dynamically via JS -->
+                    </div>
+
+                    <!-- Add Component Button { + } -->
+                    <button 
+                        type="button" 
+                        onclick="addComponent()" 
+                        class="w-full py-3 border-2 border-dashed border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-xl text-indigo-400 hover:text-indigo-300 transition-all font-medium text-sm flex items-center justify-center space-x-2 group focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                        <div class="w-6 h-6 rounded-lg bg-indigo-500/10 group-hover:bg-indigo-500/20 flex items-center justify-center text-indigo-400 transition-colors">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </div>
+                        <span>Add Component</span>
+                    </button>
+                </div>
+
+                <!-- Section 3: WorkFlow List -->
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
                         <label class="block text-sm font-semibold text-slate-300 tracking-wide uppercase flex items-center space-x-2">
@@ -104,7 +132,7 @@
                     </button>
                 </div>
 
-                <!-- Section 3: Notes Box -->
+                <!-- Section 4: Notes Box -->
                 <div class="space-y-2">
                     <label for="notes-input" class="block text-sm font-semibold text-slate-300 tracking-wide uppercase flex items-center space-x-2">
                         <i class="fa-regular fa-note-sticky text-indigo-400"></i>
@@ -144,7 +172,7 @@
 
             </section>
 
-            <section class="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-full min-h-[420px]">
+            <section class="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-full min-h-[420px] sticky top-24">
                 <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
                     <div class="flex items-center space-x-2">
                         <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
@@ -162,7 +190,7 @@
                     </button>
                 </div>
 
-                <div class="p-5 flex-grow font-mono text-sm leading-relaxed overflow-x-auto relative">
+                <div class="p-5 flex-grow font-mono text-sm leading-relaxed overflow-x-auto relative min-h-[300px]">
                     <pre id="output-preview" class="text-indigo-300 selection:bg-indigo-500 selection:text-white whitespace-pre-wrap code-font"></pre>
                 </div>
 
@@ -196,6 +224,18 @@
         // Initial Default Presets
         const DEFAULT_MCU_PLACEHOLDER = "Arduino Uno";
         const DEFAULT_NOTES_PLACEHOLDER = "None";
+
+        const INITIAL_PRESET_COMPONENTS = [
+            {
+                name: "",
+                placeholderName: "New Component",
+                pins: [
+                    { value: "", placeholder: "VCC" },
+                    { value: "", placeholder: "GND" }
+                ]
+            }
+        ];
+
         const INITIAL_PRESET_STEPS = [
             { value: "", placeholder: "Arduino Uno initializes Serial Monitor" },
             { value: "", placeholder: "Blinks LED on GPIO 7" },
@@ -204,14 +244,17 @@
             { value: "", placeholder: "Wait 1 second" }
         ];
 
-        // UI State: step objects containing value and placeholder strings
+        // UI State
+        let componentList = [];
         let workflowSteps = [];
 
         // DOM Element Cache
         const mcuInput = document.getElementById('mcu-input');
         const notesInput = document.getElementById('notes-input');
+        const componentsContainer = document.getElementById('components-container');
         const workflowContainer = document.getElementById('workflow-container');
         const outputPreview = document.getElementById('output-preview');
+        const componentCountEl = document.getElementById('component-count');
         const stepCountEl = document.getElementById('step-count');
         const charCountEl = document.getElementById('char-count');
         const toast = document.getElementById('toast');
@@ -227,13 +270,161 @@
             mcuInput.value = "";
             mcuInput.placeholder = DEFAULT_MCU_PLACEHOLDER;
             notesInput.value = "";
+            
+            // Deep copy presets
+            componentList = INITIAL_PRESET_COMPONENTS.map(comp => ({
+                name: comp.name,
+                placeholderName: comp.placeholderName,
+                pins: comp.pins.map(pin => ({ ...pin }))
+            }));
+            
             workflowSteps = INITIAL_PRESET_STEPS.map(step => ({ ...step }));
+            
+            renderComponentInputs();
             renderWorkflowInputs();
             updateOutput();
         }
 
         /**
-         * Renders all workflow input fields based on state array
+         * STREAMING_CHUNK:Rendering component cards with nested pin fields...
+         * Renders components with their respective sub-pins
+         */
+        function renderComponentInputs() {
+            componentsContainer.innerHTML = '';
+
+            componentList.forEach((compObj, compIndex) => {
+                const compCard = document.createElement('div');
+                compCard.className = 'bg-slate-900/90 border border-slate-700/70 rounded-xl p-4 space-y-3 relative group';
+
+                // Render Pin rows for this component
+                let pinsHtml = '';
+                compObj.pins.forEach((pinObj, pinIndex) => {
+                    pinsHtml += `
+                        <div class="flex items-center space-x-2">
+                            <div class="text-slate-500 text-[11px] font-mono w-4 text-right select-none">${pinIndex + 1}.</div>
+                            <div class="flex-grow">
+                                <input 
+                                    type="text" 
+                                    value="${escapeHtml(pinObj.value)}" 
+                                    placeholder="${escapeHtml(pinObj.placeholder)}" 
+                                    oninput="handlePinChange(${compIndex}, ${pinIndex}, this.value)"
+                                    class="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-lg px-3 py-1.5 text-slate-200 placeholder:text-slate-600 placeholder:italic text-xs transition-all outline-none"
+                                >
+                            </div>
+                            <button 
+                                type="button" 
+                                onclick="removePin(${compIndex}, ${pinIndex})" 
+                                title="Remove Pin"
+                                class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all focus:outline-none"
+                            >
+                                <i class="fa-regular fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+
+                compCard.innerHTML = `
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div class="flex items-center space-x-2 flex-grow mr-2">
+                            <span class="text-xs font-mono text-indigo-400 font-semibold select-none">#${compIndex + 1}</span>
+                            <input 
+                                type="text" 
+                                value="${escapeHtml(compObj.name)}" 
+                                placeholder="${escapeHtml(compObj.placeholderName)}" 
+                                oninput="handleComponentNameChange(${compIndex}, this.value)"
+                                class="w-full bg-slate-950/90 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-lg px-3 py-1.5 text-slate-100 placeholder:text-slate-500 placeholder:italic text-xs font-medium outline-none"
+                            >
+                        </div>
+                        <button 
+                            type="button" 
+                            onclick="removeComponent(${compIndex})" 
+                            title="Delete Component"
+                            class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all focus:outline-none"
+                        >
+                            <i class="fa-regular fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+
+                    <!-- Pins Subsection -->
+                    <div class="space-y-2 pt-1 pl-1">
+                        <div class="flex justify-between items-center text-xs text-slate-400 font-medium">
+                            <span class="flex items-center space-x-1.5 text-[11px] uppercase tracking-wider text-slate-400">
+                                <i class="fa-solid fa-microchip text-[10px] text-indigo-400"></i>
+                                <span>Pins Available</span>
+                            </span>
+                            <span class="text-[10px] text-slate-500">${compObj.pins.length} pin${compObj.pins.length === 1 ? '' : 's'}</span>
+                        </div>
+
+                        <div class="space-y-2">
+                            ${pinsHtml}
+                        </div>
+
+                        <button 
+                            type="button" 
+                            onclick="addPin(${compIndex})" 
+                            class="mt-2 w-full py-1.5 border border-dashed border-slate-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 rounded-lg text-indigo-400 text-xs transition-all font-medium flex items-center justify-center space-x-1.5"
+                        >
+                            <i class="fa-solid fa-plus text-[10px]"></i>
+                            <span>Add Pin</span>
+                        </button>
+                    </div>
+                `;
+
+                componentsContainer.appendChild(compCard);
+            });
+
+            componentCountEl.textContent = `${componentList.length} component${componentList.length === 1 ? '' : 's'}`;
+        }
+
+        /**
+         * Component state handlers
+         */
+        function handleComponentNameChange(compIndex, value) {
+            componentList[compIndex].name = value;
+            updateOutput();
+        }
+
+        function handlePinChange(compIndex, pinIndex, value) {
+            componentList[compIndex].pins[pinIndex].value = value;
+            updateOutput();
+        }
+
+        function addComponent() {
+            componentList.push({
+                name: "",
+                placeholderName: "New Component",
+                pins: [
+                    { value: "", placeholder: "VCC" },
+                    { value: "", placeholder: "GND" }
+                ]
+            });
+            renderComponentInputs();
+            updateOutput();
+        }
+
+        function removeComponent(compIndex) {
+            componentList.splice(compIndex, 1);
+            renderComponentInputs();
+            updateOutput();
+        }
+
+        function addPin(compIndex) {
+            componentList[compIndex].pins.push({
+                value: "",
+                placeholder: "Pin detail (e.g., GPIO / Pin / Power)"
+            });
+            renderComponentInputs();
+            updateOutput();
+        }
+
+        function removePin(compIndex, pinIndex) {
+            componentList[compIndex].pins.splice(pinIndex, 1);
+            renderComponentInputs();
+            updateOutput();
+        }
+
+        /**
+         * STREAMING_CHUNK:Handling workflow rendering and change logic...
          */
         function renderWorkflowInputs() {
             workflowContainer.innerHTML = '';
@@ -268,17 +459,11 @@
             stepCountEl.textContent = `${workflowSteps.length} step${workflowSteps.length === 1 ? '' : 's'}`;
         }
 
-        /**
-         * Updates state when user edits a workflow input step
-         */
         function handleStepChange(index, value) {
             workflowSteps[index].value = value;
             updateOutput();
         }
 
-        /**
-         * Adds a new workflow step box with generic placeholder
-         */
         function addWorkflowStep() {
             workflowSteps.push({
                 value: "",
@@ -286,19 +471,14 @@
             });
             renderWorkflowInputs();
             
-            // Focus the newly created input field
             const inputs = workflowContainer.querySelectorAll('input');
             if (inputs.length > 0) {
-                const lastInput = inputs[inputs.length - 1];
-                lastInput.focus();
+                inputs[inputs.length - 1].focus();
             }
             
             updateOutput();
         }
 
-        /**
-         * Removes a specific step by array index
-         */
         function removeWorkflowStep(index) {
             workflowSteps.splice(index, 1);
             renderWorkflowInputs();
@@ -306,14 +486,26 @@
         }
 
         /**
-         * Generates formatted target text:
-         * Uses input value if present, otherwise falls back to placeholder text
+         * STREAMING_CHUNK:Formatting text output generator logic...
+         * Generates output string containing MCU, Components with Pins in [Pin] format, WorkFlow, and Notes
          */
         function generateFormattedText() {
             const mcuVal = mcuInput.value.trim() || mcuInput.placeholder.trim();
             const notesVal = notesInput.value.trim() || DEFAULT_NOTES_PLACEHOLDER;
             
-            let text = `Write an Arduino code for the following format\n\n"MCU"\n[${mcuVal}]\n\n"WorkFlow"`;
+            let text = `Write an Arduino code for the following format\n\n"MCU"\n[${mcuVal}]\n\n"Components"`;
+
+            componentList.forEach((compObj) => {
+                const compName = compObj.name.trim() || compObj.placeholderName.trim();
+                text += `\n- ${compName}`;
+                
+                compObj.pins.forEach((pinObj) => {
+                    const pinVal = pinObj.value.trim() || pinObj.placeholder.trim();
+                    text += `\n  [${pinVal}]`;
+                });
+            });
+
+            text += `\n\n"WorkFlow"`;
             
             workflowSteps.forEach((stepObj, index) => {
                 const stepVal = stepObj.value.trim() || stepObj.placeholder.trim();
@@ -352,9 +544,6 @@
             }
         }
 
-        /**
-         * Fallback clipboard functionality
-         */
         function fallbackCopy(text) {
             const textarea = document.createElement('textarea');
             textarea.value = text;
@@ -374,9 +563,6 @@
             }
         }
 
-        /**
-         * Displays temporary toast notification
-         */
         let toastTimeout;
         function showToast() {
             clearTimeout(toastTimeout);
@@ -389,16 +575,10 @@
             }, 2500);
         }
 
-        /**
-         * Resets MCU, Workflow, and Notes to original preset placeholders
-         */
         function resetForm() {
             initDefaults();
         }
 
-        /**
-         * Utility function to escape HTML inside input placeholders and values
-         */
         function escapeHtml(str) {
             return str.replace(/&/g, "&amp;")
                       .replace(/</g, "&lt;")
