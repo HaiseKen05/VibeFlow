@@ -104,6 +104,23 @@
                     </button>
                 </div>
 
+                <!-- Section 3: Notes Box -->
+                <div class="space-y-2">
+                    <label for="notes-input" class="block text-sm font-semibold text-slate-300 tracking-wide uppercase flex items-center space-x-2">
+                        <i class="fa-regular fa-note-sticky text-indigo-400"></i>
+                        <span>Notes</span>
+                    </label>
+                    <div class="relative rounded-xl shadow-sm">
+                        <textarea 
+                            id="notes-input" 
+                            rows="3"
+                            placeholder="Add any extra notes, pin configurations, or special instructions..."
+                            class="w-full bg-slate-950/70 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500 placeholder:italic transition-all text-sm outline-none resize-y min-h-[80px]"
+                            oninput="updateOutput()"
+                        ></textarea>
+                    </div>
+                </div>
+
                 <!-- Action Buttons: Copy & Reset -->
                 <div class="pt-4 border-t border-slate-700/60 grid grid-cols-2 gap-4">
                     <button 
@@ -178,6 +195,7 @@
     <script>
         // Initial Default Presets
         const DEFAULT_MCU_PLACEHOLDER = "Arduino Uno";
+        const DEFAULT_NOTES_PLACEHOLDER = "None";
         const INITIAL_PRESET_STEPS = [
             { value: "", placeholder: "Arduino Uno initializes Serial Monitor" },
             { value: "", placeholder: "Blinks LED on GPIO 7" },
@@ -191,6 +209,7 @@
 
         // DOM Element Cache
         const mcuInput = document.getElementById('mcu-input');
+        const notesInput = document.getElementById('notes-input');
         const workflowContainer = document.getElementById('workflow-container');
         const outputPreview = document.getElementById('output-preview');
         const stepCountEl = document.getElementById('step-count');
@@ -207,6 +226,7 @@
         function initDefaults() {
             mcuInput.value = "";
             mcuInput.placeholder = DEFAULT_MCU_PLACEHOLDER;
+            notesInput.value = "";
             workflowSteps = INITIAL_PRESET_STEPS.map(step => ({ ...step }));
             renderWorkflowInputs();
             updateOutput();
@@ -291,6 +311,7 @@
          */
         function generateFormattedText() {
             const mcuVal = mcuInput.value.trim() || mcuInput.placeholder.trim();
+            const notesVal = notesInput.value.trim() || DEFAULT_NOTES_PLACEHOLDER;
             
             let text = `Write an Arduino code for the following format\n\n"MCU"\n[${mcuVal}]\n\n"WorkFlow"`;
             
@@ -301,6 +322,8 @@
                     text += `\n↓`;
                 }
             });
+
+            text += `\n\n"Notes"\n[${notesVal}]`;
 
             return text;
         }
@@ -367,7 +390,7 @@
         }
 
         /**
-         * Resets MCU and Workflow to original preset placeholders
+         * Resets MCU, Workflow, and Notes to original preset placeholders
          */
         function resetForm() {
             initDefaults();
