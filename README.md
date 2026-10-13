@@ -1,125 +1,146 @@
 # MCU & Workflow Generator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.x-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
-[![Font Awesome](https://img.shields.io/badge/Font_Awesome-6.4.0-339AF0?logo=fontawesome)](https://fontawesome.com/)
-
-A lightweight, single-page web utility designed to build structured, formatted prompt configurations for microcontroller projects (e.g., Arduino, ESP32, STM32). It converts target MCU inputs and dynamic step-by-step logic workflows into a clean, standardized string format suitable for AI coding assistants, documentation, or code generation workflows.
+A single-page web application that helps you quickly draft and format microcontroller (MCU) configuration prompts — including components, pin assignments, workflow steps, and notes — into a clean, copy-ready text format. It also includes a local **Pin Library** that saves your MCU and component presets as JSON files inside folders you choose on your computer.
 
 ---
 
 ## Features
 
-- **Microcontroller Target Selection**: Specify any MCU platform (defaults to `Arduino Uno`).
-- **Dynamic Workflow Builder**: Add, edit, or remove step-by-step logic nodes with real-time positional re-indexing.
-- **Live Visual Preview**: Instant rendering of the formatted configuration string as you type, complete with live character and step counts.
-- **One-Click Clipboard Export**: Modern Async Clipboard API integration with an explicit fallback mechanism for non-secure contexts (`execCommand`).
-- **State Reset**: Quickly clear inputs and restore default template presets.
-- **Zero Build Dependencies**: Runs entirely in the browser using CDN-delivered utilities (Tailwind CSS, Font Awesome, Google Fonts).
-
----
-
-## Output Format Specification
-
-The tool converts form inputs into a unified text block designed for structured LLM prompting or standard workflow specification:
-
-```text
-Write an Arduino code for the following format
-
-"MCU"
-[<MCU Name>]
-
-"WorkFlow"
-[Step 1]
-↓
-[Step 2]
-↓
-[Step 3]
-```
-
----
-
-## Tech Stack
-
-- **HTML5 & Vanilla JavaScript**: Framework-free core application state and DOM manipulation.
-- **Tailwind CSS (v3)**: Modern utility-first styling with dark mode aesthetic (`bg-slate-900`, `bg-slate-950`).
-- **Font Awesome (v6.4.0)**: UI and status icon iconography.
-- **Google Fonts**:
-  - [Inter](https://fonts.google.com/specimen/Inter) for main UI elements.
-  - [Fira Code](https://fonts.google.com/specimen/Fira+Code) for code/preview monospace rendering.
+- **MCU Input** — Enter the name of your microcontroller (e.g., `Arduino Uno`).
+- **Components & Pins** — Add multiple components, each with its own list of pins. `VCC` and `GND` are included by default and protected from deletion.
+- **WorkFlow Builder** — Add ordered steps describing what the code should do.
+- **Notes Section** — Attach extra instructions or pin configuration notes.
+- **Live Output Preview** — See the formatted prompt update in real time as you type.
+- **Copy Format** — One-click copy of the generated text to your clipboard.
+- **Reset** — Restore the form to its default state.
+- **Output Styling Controls** — Change the preview's font family, font size, text color, background color, and toggle bold / italic / underline.
+- **Pin Library (Save & Load)** — Save MCU definitions and component presets into `MCU/` and `Components/` subfolders inside a directory of your choice, then reload them later.
+- **File System Access API Support** — Saves directly into folders (Chrome, Edge, Opera). Falls back to downloading JSON files if the API is unavailable.
+- **Persistent Folder Handle** — Remembers your chosen library folder between sessions using IndexedDB.
 
 ---
 
 ## Getting Started
 
-Since this application is built as a single-page client-side web application, no server installation, node modules, or build steps are required.
+1. **Save the file** as `index.html`.
+2. **Open it** in a modern browser (Chrome, Edge, or Opera recommended for folder saving).
+3. Fill in the form:
+   - Enter your MCU name.
+   - Add components and their pins.
+   - Add workflow steps.
+   - (Optional) Add notes.
+4. Click **Copy Format** to copy the generated prompt, or use the **Copy** button in the preview panel.
 
-### Local Execution
-
-1. Clone or download this repository:
-   ```bash
-   git clone https://github.com/your-username/VibeFlow.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd VibeFlow
-   ```
-3. Open `VibeFlow.html` directly in any web browser:
-   ```bash
-   # On macOS
-   open VibeFlow.html
-
-   # On Linux
-   xdg-open VibeFlow.html
-
-   # On Windows
-   start VibeFlow.html
-   ```
+No build step, no dependencies to install — everything is loaded from CDNs (Tailwind CSS, Font Awesome, Google Fonts).
 
 ---
 
-## Project Structure
+## Using the Pin Library
 
+### Choosing a Library Folder
+
+Click **📂 Choose Library Folder** and select any folder on your machine. The app will create (or use) two subfolders inside it:
+
+```text
+YourChosenFolder/
+├── MCU/
+│   └── Arduino_Uno.json
+└── Components/
+    └── MyComponents.json
 ```
-.
-├── VibeFlow.html        # Main HTML layout, styles, and inline application script
-└── README.md         # Project documentation
-```
 
-### Application Functions Breakdown
+### Saving
 
-| Function Name | Description |
-| :--- | :--- |
-| `initDefaults()` | Initializes UI state with default values and populates initial placeholder presets. |
-| `renderWorkflowInputs()` | Dynamically updates the DOM list items for workflow steps based on state array changes. |
-| `addWorkflowStep()` | Appends a new step object to state array and focuses the newly created input field. |
-| `removeWorkflowStep(index)` | Deletes a workflow step by index and triggers a re-render and preview update. |
-| `generateFormattedText()` | Compiles MCU input and workflow items into the final output format string. |
-| `updateOutput()` | Updates live code preview area and dynamic character counts in real-time. |
-| `copyToClipboard()` | Handles modern and fallback clipboard copy operations and triggers the toast notification. |
-| `resetForm()` | Clears current inputs and re-initializes application state to defaults. |
+- **Save MCU** — Saves the current MCU name and its pin list into `MCU/`.
+- **Save Components** — Saves the entire component list into `Components/`.
+
+### Loading
+
+- Switch between the **MCU Folder** and **Components Folder** tabs.
+- Click any saved item to load it into the form.
+- Click the trash icon next to an item to delete it.
+
+### Refresh & Re-grant
+
+- Use **Refresh** to re-scan the chosen folder.
+- If browser permission expires, click the folder button again to re-authorize.
+
+### Fallback Behavior
+
+If your browser doesn't support the File System Access API, the app will download the JSON file to your **Downloads** folder instead. You can still keep and manage these files manually.
 
 ---
 
-## Customization
+## Output Format
 
-### Default Preset Workflow
+The generated text follows this structure:
 
-To modify the default steps that populate on load or reset, update the `INITIAL_PRESET_STEPS` constant inside `VibeFlow.html`:
+```text
+Write an Arduino code with the following workflow
 
-```javascript
-const DEFAULT_MCU_PLACEHOLDER = "Arduino Uno";
-const INITIAL_PRESET_STEPS = [
-    { value: "", placeholder: "Arduino Uno initializes Serial Monitor" },
-    { value: "", placeholder: "Blinks LED on GPIO 7" },
-    { value: "", placeholder: "Wait 1 second" },
-    { value: "", placeholder: "Turn Off LED" },
-    { value: "", placeholder: "Wait 1 second" }
-];
+"MCU"
+[Arduino Uno]
+
+"Components"
+- LED
+  [VCC]
+  [GND]
+  [GPIO 7]
+
+"WorkFlow"
+[Arduino Uno initializes Serial Monitor]
+↓
+[Blinks LED on GPIO 7]
+↓
+[Wait 1 second]
+↓
+[Turn Off LED]
+↓
+[Wait 1 second]
+
+"Notes"
+[None]
 ```
+
+Empty fields automatically fall back to their placeholder text.
+
+---
+
+## Tech Stack
+
+| Technology | Purpose |
+| --- | --- |
+| HTML5 / CSS3 | Structure and styling |
+| [Tailwind CSS](https://tailwindcss.com/) (CDN) | Utility-first styling |
+| [Font Awesome](https://fontawesome.com/) (CDN) | Icons |
+| [Google Fonts](https://fonts.google.com/) | Inter & Fira Code typefaces |
+| Vanilla JavaScript | All app logic |
+| File System Access API | Saving/loading JSON files into folders |
+| IndexedDB | Persisting the chosen folder handle |
+
+---
+
+## Browser Compatibility
+
+| Browser | Folder Saving | Fallback Download |
+| --- | --- | --- |
+| Chrome / Edge / Opera | ✅ | ✅ |
+| Firefox | ❌ | ✅ |
+| Safari | ❌ | ✅ |
+
+For the best experience, use a Chromium-based browser.
+
+---
+
+## Keyboard & UI Tips
+
+- The preview panel is **sticky** on desktop, so it stays visible while you edit.
+- Click a saved library item to instantly load it into the form; the affected component card briefly highlights.
+- Use the trash icons to remove components, pins, or workflow steps.
+- The character count at the bottom of the preview updates live.
 
 ---
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+This project is provided as-is for personal and educational use. Feel free to modify and adapt it to your needs.
