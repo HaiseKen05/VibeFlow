@@ -77,9 +77,9 @@
                     </h1>
                 </div>
             </div>
-            <a href="https://github.com/HaiseKen05" target="_blank" rel="noopener noreferrer" class="text-xs text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition-colors">
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-xs text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition-colors">
                 <i class="fa-brands fa-github text-sm"></i>
-                <span class="hidden sm:inline">HaiseKen05's Repo</span>
+                <span class="hidden sm:inline">Github</span>
             </a>
         </div>
     </header>
@@ -94,7 +94,7 @@
                 <div class="space-y-2">
                     <label for="mcu-input" class="block text-sm font-semibold text-slate-300 tracking-wide uppercase flex items-center space-x-2">
                         <i class="fa-solid fa-cpu text-indigo-400"></i>
-                        <span>MCU (Microcontroller Unit</span>
+                        <span>MCU</span>
                         <span class="ml-auto text-[10px] font-normal normal-case text-indigo-400/80 flex items-center space-x-1">
                         </span>
                     </label>
@@ -645,7 +645,7 @@
             const mcuVal = mcuInput.value.trim() || mcuInput.placeholder.trim();
             const notesVal = notesInput.value.trim() || DEFAULT_NOTES_PLACEHOLDER;
             
-            let text = `Write an Arduino code for the following format\n\n"MCU"\n[${mcuVal}]\n\n"Components"`;
+            let text = `Write an Arduino code with the following workflow\n\n"MCU"\n[${mcuVal}]\n\n"Components"`;
 
             componentList.forEach((compObj) => {
                 const compName = compObj.name.trim() || compObj.placeholderName.trim();
