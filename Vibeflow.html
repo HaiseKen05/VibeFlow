@@ -236,13 +236,12 @@
             ];
         }
 
-        const INITIAL_PRESET_COMPONENTS = [
-            { name: "", placeholderName: "New Component", pins: createDefaultPins() }
-        ];
+        // Components start empty — no more implicit "first component = MCU"
+        const INITIAL_PRESET_COMPONENTS = [];
 
         const INITIAL_PRESET_STEPS = [
             { value: "", placeholder: "Arduino Uno initializes Serial Monitor" },
-            { value: "", placeholder: "Blinks LED on GPIO 7" },
+            { value: "", placeholder: "Blinks LED on GPIO 13" },
             { value: "", placeholder: "Wait 1 second" },
             { value: "", placeholder: "Turn Off LED" },
             { value: "", placeholder: "Wait 1 second" }
@@ -251,7 +250,6 @@
         let componentList = [];
         let workflowSteps = [];
         let isBold = false, isItalic = false, isUnderline = false;
-        let isSyncing = false;
         let currentLibraryTab = 'mcu';
 
         // ================= DOM =================
@@ -324,19 +322,13 @@
             mcuInput.placeholder = DEFAULT_MCU_PLACEHOLDER;
             notesInput.value = "";
             
-            componentList = INITIAL_PRESET_COMPONENTS.map(comp => ({
-                name: comp.name,
-                placeholderName: comp.placeholderName,
-                pins: comp.pins.map(pin => ({ ...pin }))
-            }));
-            
+            componentList = [];
             workflowSteps = INITIAL_PRESET_STEPS.map(step => ({ ...step }));
             
             renderComponentInputs();
             renderWorkflowInputs();
             updateOutput();
 
-            // Try to restore dir handle
             if ('showDirectoryPicker' in window) {
                 const handle = await loadPersistedDirHandle();
                 if (handle) {
@@ -348,7 +340,6 @@
                             await refreshLibraryFromDisk();
                             return;
                         } else if (perm === 'prompt') {
-                            // Need to re-request. Show as "click to re-grant"
                             libraryDirHandle = handle;
                             folderStatusText.textContent = '🔒 Re-grant access';
                             libraryPathHint.textContent = 'Click the folder button to re-authorize.';
@@ -359,24 +350,9 @@
             renderLibrary([]);
         }
 
-        // ================= MCU + COMPONENT RENDER =================
+        // ================= MCU =================
         function handleMcuInput(value) {
-            if (isSyncing) return;
-            isSyncing = true;
-            if (componentList.length > 0) {
-                componentList[0].name = value;
-                const firstCompNameInput = componentsContainer.querySelector(`input[oninput*="handleComponentNameChange(0,"]`);
-                if (firstCompNameInput) {
-                    firstCompNameInput.value = value;
-                    const compCard = firstCompNameInput.closest('.bg-slate-900\\/90');
-                    if (compCard) {
-                        compCard.classList.add('sync-highlight');
-                        setTimeout(() => compCard.classList.remove('sync-highlight'), 600);
-                    }
-                }
-            }
             updateOutput();
-            isSyncing = false;
         }
 
         function renderComponentInputs() {
@@ -435,11 +411,6 @@
 
         function handleComponentNameChange(compIndex, value) {
             componentList[compIndex].name = value;
-            if (compIndex === 0 && !isSyncing) {
-                isSyncing = true;
-                mcuInput.value = value;
-                isSyncing = false;
-            }
             updateOutput();
         }
 
@@ -618,7 +589,6 @@
                 return;
             }
             try {
-                // Suggest starting in Documents if we can't control it — the user picks the folder.
                 const handle = await window.showDirectoryPicker({
                     id: 'mcuToolLibrary',
                     mode: 'readwrite',
@@ -688,7 +658,7 @@
             const granted = await ensureFolderPermission();
             if (!granted) return [];
             try {
-                const sub = await getSubfolder(subfolderName, true); // create if missing (harmless)
+                const sub = await getSubfolder(subfolderName, true);
                 const entries = [];
                 for await (const [name, handle] of sub.entries()) {
                     if (handle.kind === 'file' && name.toLowerCase().endsWith('.json')) {
@@ -722,15 +692,8 @@
         // ================= SAVE =================
         async function saveMcuToLibrary() {
             const mcuName = mcuInput.value.trim() || mcuInput.placeholder.trim();
-            let mcuPins = [];
-            if (componentList.length > 0) {
-                mcuPins = componentList[0].pins.map(pin => {
-                    if (pin.protected) return { label: pin.label, protected: true, pinType: pin.pinType };
-                    return { value: pin.value || '', placeholder: pin.placeholder || 'Pin detail', protected: false, pinType: 'custom' };
-                });
-            } else {
-                mcuPins = createDefaultPins();
-            }
+            // MCU now uses its own default pins (VCC/GND) — not tied to any component
+            const mcuPins = createDefaultPins();
 
             const entry = {
                 type: 'mcu',
@@ -753,7 +716,6 @@
                     return;
                 }
             }
-            // Fallback: download
             downloadJson(filename, entry, 'MCU');
         }
 
@@ -800,7 +762,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename; // user's Downloads folder
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -811,30 +773,8 @@
         // ================= LOAD =================
         function loadMcuFromLibrary(entry) {
             mcuInput.value = entry.name || '';
-            const pins = Array.isArray(entry.pins) ? entry.pins : [];
-            if (componentList.length === 0) {
-                componentList.push({
-                    name: entry.name || '',
-                    placeholderName: "New Component",
-                    pins: pins.map(pin => {
-                        if (pin.protected) return { label: pin.label, protected: true, pinType: pin.pinType };
-                        return { value: pin.value || '', placeholder: pin.placeholder || 'Pin detail', protected: false, pinType: 'custom' };
-                    })
-                });
-            } else {
-                componentList[0].name = entry.name || '';
-                componentList[0].pins = pins.map(pin => {
-                    if (pin.protected) return { label: pin.label, protected: true, pinType: pin.pinType };
-                    return { value: pin.value || '', placeholder: pin.placeholder || 'Pin detail', protected: false, pinType: 'custom' };
-                });
-            }
-            renderComponentInputs();
+            // No component manipulation — MCU is fully standalone now
             updateOutput();
-            const firstComp = componentsContainer.querySelector('.bg-slate-900\\/90');
-            if (firstComp) {
-                firstComp.classList.add('sync-highlight');
-                setTimeout(() => firstComp.classList.remove('sync-highlight'), 600);
-            }
         }
 
         function loadComponentsFromLibrary(entry) {
@@ -847,7 +787,6 @@
                     return { value: pin.value || '', placeholder: pin.placeholder || 'Pin detail', protected: false, pinType: 'custom' };
                 })
             }));
-            if (componentList.length > 0) mcuInput.value = componentList[0].name || '';
             renderComponentInputs();
             updateOutput();
             const firstComp = componentsContainer.querySelector('.bg-slate-900\\/90');
