@@ -23,6 +23,14 @@
         .folder-tab { transition: all 0.15s; cursor: pointer; }
         .folder-tab.active { background: #1e293b; border-bottom-color: #6366f1; color: white; }
         .folder-item:hover { background: rgba(99,102,241,0.1); }
+        
+        /* Drag & Drop Styles for Workflow Steps */
+        .workflow-step-row { transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease; }
+        .workflow-step-row.dragging { opacity: 0.4; background-color: rgba(99, 102, 241, 0.1); border-radius: 0.75rem; }
+        .workflow-step-row.drag-over-top { border-t-2 border-t-indigo-500; }
+        .workflow-step-row.drag-over-bottom { border-b-2 border-b-indigo-500; }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
@@ -252,6 +260,9 @@
         let isBold = false, isItalic = false, isUnderline = false;
         let currentLibraryTab = 'mcu';
 
+        // Drag & Drop state
+        let draggedStepIndex = null;
+
         // ================= DOM =================
         const mcuInput = document.getElementById('mcu-input');
         const notesInput = document.getElementById('notes-input');
@@ -449,30 +460,106 @@
             updateOutput();
         }
 
-        // ================= WORKFLOW =================
+        // ================= WORKFLOW (WITH DRAG AND DROP) =================
         function renderWorkflowInputs() {
             workflowContainer.innerHTML = '';
             workflowSteps.forEach((stepObj, index) => {
                 const stepRow = document.createElement('div');
-                stepRow.className = 'flex items-center space-x-2 group animate-fade-in';
+                stepRow.className = 'workflow-step-row flex items-center space-x-2 group animate-fade-in p-1 border border-transparent rounded-xl';
+                stepRow.setAttribute('draggable', 'true');
+                stepRow.setAttribute('data-step-index', index);
+
                 stepRow.innerHTML = `
-                    <div class="text-slate-500 text-xs font-mono w-5 text-right select-none">${index + 1}.</div>
+                    <div class="drag-handle text-slate-500 hover:text-indigo-400 p-1 flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors" title="Drag to reorder step">
+                        <i class="fa-solid fa-grip-vertical text-xs"></i>
+                    </div>
+                    <div class="text-slate-500 text-xs font-mono w-5 text-right select-none step-number">${index + 1}.</div>
                     <div class="flex-grow relative">
                         <input type="text" value="${escapeHtml(stepObj.value)}" placeholder="${escapeHtml(stepObj.placeholder)}" data-index="${index}" oninput="handleStepChange(${index}, this.value)"
                             class="w-full bg-slate-950/70 border border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 placeholder:italic text-sm transition-all outline-none">
                     </div>
                     <button type="button" onclick="removeWorkflowStep(${index})" title="Delete Step" class="p-2.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all focus:outline-none"><i class="fa-regular fa-trash-can text-sm"></i></button>
                 `;
+
+                // Add Drag & Drop Event Listeners
+                stepRow.addEventListener('dragstart', handleDragStart);
+                stepRow.addEventListener('dragover', handleDragOver);
+                stepRow.addEventListener('dragleave', handleDragLeave);
+                stepRow.addEventListener('drop', handleDrop);
+                stepRow.addEventListener('dragend', handleDragEnd);
+
                 workflowContainer.appendChild(stepRow);
             });
             stepCountEl.textContent = `${workflowSteps.length} step${workflowSteps.length === 1 ? '' : 's'}`;
+        }
+
+        // Drag & Drop Handlers
+        function handleDragStart(e) {
+            draggedStepIndex = parseInt(this.getAttribute('data-step-index'), 10);
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', draggedStepIndex);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const targetRow = this;
+            const targetIndex = parseInt(targetRow.getAttribute('data-step-index'), 10);
+            if (draggedStepIndex === targetIndex) return;
+
+            const rect = targetRow.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            
+            targetRow.classList.remove('drag-over-top', 'drag-over-bottom');
+            if (e.clientY < midpoint) {
+                targetRow.classList.add('drag-over-top');
+            } else {
+                targetRow.classList.add('drag-over-bottom');
+            }
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over-top', 'drag-over-bottom');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over-top', 'drag-over-bottom');
+
+            const targetIndex = parseInt(this.getAttribute('data-step-index'), 10);
+            if (draggedStepIndex === null || draggedStepIndex === targetIndex) return;
+
+            const rect = this.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            let newIndex = e.clientY < midpoint ? targetIndex : targetIndex + 1;
+
+            if (draggedStepIndex < newIndex) {
+                newIndex--;
+            }
+
+            // Reorder workflowSteps array
+            const [movedStep] = workflowSteps.splice(draggedStepIndex, 1);
+            workflowSteps.splice(newIndex, 0, movedStep);
+
+            renderWorkflowInputs();
+            updateOutput();
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.workflow-step-row').forEach(row => {
+                row.classList.remove('drag-over-top', 'drag-over-bottom', 'dragging');
+            });
+            draggedStepIndex = null;
         }
 
         function handleStepChange(index, value) { workflowSteps[index].value = value; updateOutput(); }
         function addWorkflowStep() {
             workflowSteps.push({ value: "", placeholder: "Enter workflow step..." });
             renderWorkflowInputs();
-            const inputs = workflowContainer.querySelectorAll('input');
+            const inputs = workflowContainer.querySelectorAll('input[type="text"]');
             if (inputs.length > 0) inputs[inputs.length - 1].focus();
             updateOutput();
         }
@@ -692,7 +779,6 @@
         // ================= SAVE =================
         async function saveMcuToLibrary() {
             const mcuName = mcuInput.value.trim() || mcuInput.placeholder.trim();
-            // MCU now uses its own default pins (VCC/GND) — not tied to any component
             const mcuPins = createDefaultPins();
 
             const entry = {
@@ -773,7 +859,6 @@
         // ================= LOAD =================
         function loadMcuFromLibrary(entry) {
             mcuInput.value = entry.name || '';
-            // No component manipulation — MCU is fully standalone now
             updateOutput();
         }
 
