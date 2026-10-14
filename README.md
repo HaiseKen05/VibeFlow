@@ -1,146 +1,44 @@
 # MCU & Workflow Generator
 
-A single-page web application that helps you quickly draft and format microcontroller (MCU) configuration prompts — including components, pin assignments, workflow steps, and notes — into a clean, copy-ready text format. It also includes a local **Pin Library** that saves your MCU and component presets as JSON files inside folders you choose on your computer.
+A single-page web application (SPA) designed to document, style, and manage Microcontroller Unit (MCU) configurations, component pinouts, and procedural workflows. It features a live-updating text preview and direct local file system integration for saving configurations.
 
----
+## ✨ Features
 
-## Features
+- **MCU & Component Management:** Define your primary microcontroller and attach multiple components, assigning specific pins (VCC, GND, and custom GPIO).
+- **Drag-and-Drop Workflow Builder:** Create and reorder sequential logic steps for your hardware project using an intuitive drag-and-drop interface.
+- **Local File System Library:** Utilizes the modern File System Access API to connect a local folder. Save and load MCU and Component configurations directly as `.json` files without downloading/uploading.
+- **Live Stylized Output:** A real-time preview of your configuration formatted as a standardized text string. Customize the display with adjustable fonts, text sizes, background/text colors, and rich text formatting (bold, italic, underline).
+- **One-Click Export:** Instantly copy the generated configuration string to your clipboard for use in documentation, code comments, or LLM prompts.
 
-- **MCU Input** — Enter the name of your microcontroller (e.g., `Arduino Uno`).
-- **Components & Pins** — Add multiple components, each with its own list of pins. `VCC` and `GND` are included by default and protected from deletion.
-- **WorkFlow Builder** — Add ordered steps describing what the code should do.
-- **Notes Section** — Attach extra instructions or pin configuration notes.
-- **Live Output Preview** — See the formatted prompt update in real time as you type.
-- **Copy Format** — One-click copy of the generated text to your clipboard.
-- **Reset** — Restore the form to its default state.
-- **Output Styling Controls** — Change the preview's font family, font size, text color, background color, and toggle bold / italic / underline.
-- **Pin Library (Save & Load)** — Save MCU definitions and component presets into `MCU/` and `Components/` subfolders inside a directory of your choice, then reload them later.
-- **File System Access API Support** — Saves directly into folders (Chrome, Edge, Opera). Falls back to downloading JSON files if the API is unavailable.
-- **Persistent Folder Handle** — Remembers your chosen library folder between sessions using IndexedDB.
+## 🛠️ Technology Stack
 
----
+- **Markup & Styling:** HTML5, Tailwind CSS (via CDN)
+- **Icons & Typography:** FontAwesome 6, Google Fonts (Inter, Fira Code)
+- **Logic:** Vanilla JavaScript (ES6+)
+- **Storage & APIs:** File System Access API (for local directory integration), IndexedDB (for persisting directory handles), Web Drag and Drop API.
 
-## Getting Started
+## 🚀 Usage Guide
 
-1. **Save the file** as `index.html`.
-2. **Open it** in a modern browser (Chrome, Edge, or Opera recommended for folder saving).
-3. Fill in the form:
-   - Enter your MCU name.
-   - Add components and their pins.
-   - Add workflow steps.
-   - (Optional) Add notes.
-4. Click **Copy Format** to copy the generated prompt, or use the **Copy** button in the preview panel.
+1. **Set the MCU:** Enter your target microcontroller (e.g., `Arduino Uno`, `ESP32`) in the top input.
+2. **Add Components:** Click **Add Component** to define peripherals. 
+   - Name the component.
+   - Add standard or custom pins. Protected pins (like VCC/GND) are locked by default.
+3. **Build the Workflow:** Add individual steps outlining the execution logic. Use the grip handle `⋮⋮` on the left of any step to drag and reorder the sequence.
+4. **Add Notes:** Use the Notes section for extra context, I2C addresses, or specific library requirements.
+5. **Customize Preview:** Use the toolbar above the dark preview pane to adjust the aesthetics of your output text.
+6. **Save to Library:** 
+   - Click the **Choose Library Folder** button to grant local folder access.
+   - Save your specific MCU or Component setups for future projects. They will be stored as JSON files in `MCU/` and `Components/` subdirectories.
+7. **Export:** Click **Copy Format** to copy the plain-text layout to your clipboard.
 
-No build step, no dependencies to install — everything is loaded from CDNs (Tailwind CSS, Font Awesome, Google Fonts).
+## 📁 Local Library Structure
 
----
-
-## Using the Pin Library
-
-### Choosing a Library Folder
-
-Click **📂 Choose Library Folder** and select any folder on your machine. The app will create (or use) two subfolders inside it:
-
+When a local directory is linked, the app automatically manages the following structure:
 ```text
-YourChosenFolder/
+[Your Chosen Folder]/
 ├── MCU/
-│   └── Arduino_Uno.json
+│   ├── Arduino_Uno.json
+│   └── ESP32_WROOM.json
 └── Components/
-    └── MyComponents.json
-```
-
-### Saving
-
-- **Save MCU** — Saves the current MCU name and its pin list into `MCU/`.
-- **Save Components** — Saves the entire component list into `Components/`.
-
-### Loading
-
-- Switch between the **MCU Folder** and **Components Folder** tabs.
-- Click any saved item to load it into the form.
-- Click the trash icon next to an item to delete it.
-
-### Refresh & Re-grant
-
-- Use **Refresh** to re-scan the chosen folder.
-- If browser permission expires, click the folder button again to re-authorize.
-
-### Fallback Behavior
-
-If your browser doesn't support the File System Access API, the app will download the JSON file to your **Downloads** folder instead. You can still keep and manage these files manually.
-
----
-
-## Output Format
-
-The generated text follows this structure:
-
-```text
-Write an Arduino code with the following workflow
-
-"MCU"
-[Arduino Uno]
-
-"Components"
-- LED
-  [VCC]
-  [GND]
-  [GPIO 7]
-
-"WorkFlow"
-[Arduino Uno initializes Serial Monitor]
-↓
-[Blinks LED on GPIO 7]
-↓
-[Wait 1 second]
-↓
-[Turn Off LED]
-↓
-[Wait 1 second]
-
-"Notes"
-[None]
-```
-
-Empty fields automatically fall back to their placeholder text.
-
----
-
-## Tech Stack
-
-| Technology | Purpose |
-| --- | --- |
-| HTML5 / CSS3 | Structure and styling |
-| [Tailwind CSS](https://tailwindcss.com/) (CDN) | Utility-first styling |
-| [Font Awesome](https://fontawesome.com/) (CDN) | Icons |
-| [Google Fonts](https://fonts.google.com/) | Inter & Fira Code typefaces |
-| Vanilla JavaScript | All app logic |
-| File System Access API | Saving/loading JSON files into folders |
-| IndexedDB | Persisting the chosen folder handle |
-
----
-
-## Browser Compatibility
-
-| Browser | Folder Saving | Fallback Download |
-| --- | --- | --- |
-| Chrome / Edge / Opera | ✅ | ✅ |
-| Firefox | ❌ | ✅ |
-| Safari | ❌ | ✅ |
-
-For the best experience, use a Chromium-based browser.
-
----
-
-## Keyboard & UI Tips
-
-- The preview panel is **sticky** on desktop, so it stays visible while you edit.
-- Click a saved library item to instantly load it into the form; the affected component card briefly highlights.
-- Use the trash icons to remove components, pins, or workflow steps.
-- The character count at the bottom of the preview updates live.
-
----
-
-## License
-
-This project is provided as-is for personal and educational use. Feel free to modify and adapt it to your needs.
+    ├── I2C_OLED_Display.json
+    └── Servo_Motor.json
